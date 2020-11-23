@@ -27,6 +27,7 @@ export interface InitCmdContext extends CliDefaultOptions {
   tsedVersion: string;
   features: FeatureValue[];
   featuresTypeORM?: FeatureValue;
+  packageManager?: "yarn" | "npm";
 
   [key: string]: any;
 }
@@ -103,7 +104,24 @@ export class InitCmd implements CommandProvider {
           }
         ]
       },
-      ...this.features
+      ...this.features,
+      {
+        message: "Choose the package manager:",
+        type: "list",
+        name: "packageManager",
+        choices: [
+          {
+            name: "Yarn",
+            checked: true,
+            value: "yarn"
+          },
+          {
+            name: "NPM",
+            checked: false,
+            value: "npm"
+          }
+        ]
+      }
     ];
   }
 
@@ -152,7 +170,7 @@ export class InitCmd implements CommandProvider {
       [
         {
           title: "Install plugins",
-          task: () => this.packageJson.install()
+          task: () => this.packageJson.install(ctx)
         },
         {
           title: "Load plugins",
@@ -162,7 +180,7 @@ export class InitCmd implements CommandProvider {
           title: "Install plugins dependencies",
           task: () => {
             this.cliPlugins.addPluginsDependencies();
-            return this.packageJson.install();
+            return this.packageJson.install(ctx);
           }
         }
       ],
@@ -211,6 +229,30 @@ export class InitCmd implements CommandProvider {
                 title: "Create index",
                 task: async () => {
                   return this.srcRenderer.renderAll(["init/index.ts.hbs"], ctx);
+                }
+              },
+              {
+                title: "Create Views",
+                enabled() {
+                  return ctx.swagger;
+                },
+                task: async () => {
+                  return this.rootRenderer.render("init/index.ejs.hbs", ctx, {
+                    ...ctx,
+                    rootDir: `${this.rootRenderer.rootDir}/views`
+                  });
+                }
+              },
+              {
+                title: "Create HomeCtrl",
+                enabled() {
+                  return ctx.swagger;
+                },
+                task: async () => {
+                  return this.srcRenderer.renderAll(["init/IndexCtrl.ts.hbs"], ctx, {
+                    ...ctx,
+                    rootDir: `${this.srcRenderer.rootDir}/controllers/pages`
+                  });
                 }
               },
               ...subTasks
@@ -277,6 +319,15 @@ export class InitCmd implements CommandProvider {
       case "koa":
         this.addKoaDependencies(ctx);
         break;
+    }
+
+    if (ctx.features.find(({type}) => type === "graphql")) {
+      this.packageJson.addDependencies(
+        {
+          ["apollo-server-" + ctx.platform]: "latest"
+        },
+        ctx
+      );
     }
   }
 
