@@ -241,6 +241,15 @@ registerProvider({
                 "@tsed/cli-plugin-typeorm": cliVersion
               }
             }
+          },
+          {
+            name: "Objection.js",
+            value: {
+              type: "objection",
+              devDependencies: {
+                "@tsed/cli-plugin-objection": cliVersion
+              }
+            }
           }
         ]
       },
