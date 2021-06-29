@@ -26,15 +26,43 @@ export class ObjectionInitHook {
 
     return [
       {
-        title: `Generate Knex connection file`,
+        title: "Generate Knex provider",
         task: async () => {
           return this.srcRenderer.render(
             "knex.hbs",
             {},
             {
               templateDir: TEMPLATE_DIR,
-              output: `KnexConnectionProvider.ts`,
+              output: "KnexConnectionProvider.ts",
               rootDir: join(this.srcRenderer.rootDir, "services", "connections")
+            }
+          );
+        }
+      },
+      {
+        title: "Generate User model",
+        task: async () => {
+          return this.srcRenderer.render(
+            "user.hbs",
+            {},
+            {
+              templateDir: TEMPLATE_DIR,
+              output: "User.ts",
+              rootDir: join(this.srcRenderer.rootDir, "models")
+            }
+          );
+        }
+      },
+      {
+        title: "Generate migration",
+        task: async () => {
+          return this.srcRenderer.render(
+            "database/migrations/01_create_users_table.js",
+            {},
+            {
+              templateDir: TEMPLATE_DIR,
+              output: "01_create_users_table.js",
+              rootDir: join(this.srcRenderer.rootDir, "..", "database", "migrations")
             }
           );
         }

@@ -1,15 +1,15 @@
 {
   "name": "@tsed/cli-plugin-objection",
-  "version": "2.0.0",
+  "version": "2.6.0",
   "main": "./lib/index.js",
   "typings": "./lib/index.d.ts",
   "description": "Ts.ED CLI plugin. Add Objection.js support",
   "dependencies": {
-    "tslib": "1.11.1"
+    "tslib": "2.0.3"
   },
   "devDependencies": {
-    "@tsed/cli": "2.0.0",
-    "@tsed/cli-core": "2.0.0"
+    "@tsed/cli": "2.6.0",
+    "@tsed/cli-core": "2.6.0"
   },
   "scripts": {
     "build": "tsc --build tsconfig.compile.json",

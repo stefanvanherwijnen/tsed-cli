@@ -6,7 +6,7 @@ export const KNEX_CONNECTION = Symbol.for("KNEX_CONNECTION");
 export type KNEX_CONNECTION = ReturnType<Knex>;
 
 registerProvider({
-  provide: CONNECTION,
+  provide: KNEX_CONNECTION,
   deps: [Configuration],
   async useAsyncFactory(configuration: Configuration) {
     const connectionOptions = configuration.get<Config>("knex")!;
