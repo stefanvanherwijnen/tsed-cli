@@ -1,5 +1,5 @@
 import {InitCmdContext} from "@tsed/cli";
-import {Inject, Injectable, OnExec, OnPostInstall, ProjectPackageJson, RootRendererService} from "@tsed/cli-core";
+import {Inject, Injectable, OnExec, ProjectPackageJson, RootRendererService} from "@tsed/cli-core";
 import {TEMPLATE_DIR} from "../utils/templateDir";
 
 @Injectable()
@@ -15,6 +15,7 @@ export class EslintInitHook {
     if (!ctx.eslint) {
       return [];
     }
+
     this.addScripts(ctx);
     this.addDependencies(ctx);
     this.addDevDependencies(ctx);
@@ -25,32 +26,16 @@ export class EslintInitHook {
         task: (ctx: any) => {
           return this.rootRenderer.renderAll(
             [
-              "init/.eslintrc.hbs",
-              ctx.lintstaged && "init/.lintstagedrc.hbs",
-              ctx.prettier && "init/.prettierignore.hbs",
-              ctx.prettier && "init/.prettierrc.hbs"
+              ".eslintrc.hbs",
+              ctx.lintstaged && ".lintstagedrc.hbs",
+              ctx.prettier && ".prettierignore.hbs",
+              ctx.prettier && ".prettierrc.hbs"
             ],
             ctx,
             {
-              templateDir: TEMPLATE_DIR
+              templateDir: `${TEMPLATE_DIR}/init`
             }
           );
-        }
-      }
-    ];
-  }
-
-  @OnPostInstall("init")
-  onPostInstall(ctx: InitCmdContext) {
-    if (!ctx.eslint) {
-      return [];
-    }
-
-    return [
-      {
-        title: "Run eslint",
-        task: () => {
-          return this.packageJson.runScript("test:lint:fix", true);
         }
       }
     ];

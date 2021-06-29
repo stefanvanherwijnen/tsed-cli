@@ -1,6 +1,6 @@
 {
   "name": "@tsed/cli-testing",
-  "version": "2.6.0",
+  "version": "3.3.0",
   "main": "./lib/index.js",
   "typings": "./lib/index.d.ts",
   "description": "Utils to test you CLI based on Ts.ED CLI",
@@ -15,8 +15,8 @@
     "decorators"
   ],
   "dependencies": {
-    "@tsed/cli-core": "2.6.0",
-    "tslib": "2.0.3"
+    "@tsed/cli-core": "3.3.0",
+    "tslib": "2.1.0"
   },
   "scripts": {
     "build": "tsc --build tsconfig.compile.json",

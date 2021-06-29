@@ -1,5 +1,6 @@
 import {CliPlatformTest} from "@tsed/cli-testing";
-import {CliExeca, CliFs, ProjectPackageJson} from "@tsed/cli-core";
+import {CliExeca, CliFs, PackageManager, ProjectPackageJson} from "@tsed/cli-core";
+import {join, resolve} from "path";
 
 async function getProjectPackageJsonFixture() {
   const cliExeca = {
@@ -24,10 +25,11 @@ async function getProjectPackageJsonFixture() {
   return {projectPackageJson, cliExeca, cliFs};
 }
 
-const rootDir = __dirname + "/__mock__/";
+const rootDir = resolve(join(__dirname, "__mock__"));
 describe("ProjectPackageJson", () => {
   beforeEach(() =>
     CliPlatformTest.create({
+      name: "tsed",
       project: {
         rootDir
       }
@@ -59,7 +61,7 @@ describe("ProjectPackageJson", () => {
         "dev-module3": "6.0.0"
       });
 
-      const list = projectPackageJson.install({packageManager: "yarn"});
+      const list = projectPackageJson.install({packageManager: PackageManager.YARN});
       list.setRenderer("silent");
 
       expect(projectPackageJson.toJSON()).toEqual({
@@ -80,6 +82,9 @@ describe("ProjectPackageJson", () => {
         scripts: {
           build: "echo 0"
         },
+        tsed: {
+          packageManager: "yarn"
+        },
         version: "1.0.0"
       });
 
@@ -99,15 +104,21 @@ describe("ProjectPackageJson", () => {
         devDependencies: {
           "dev-module3": "6.0.0"
         },
-        readme: "ERROR: No README data found!",
-        _id: "@"
+        tsed: {
+          packageManager: "yarn"
+        }
       };
 
-      expect(cliFs.writeFileSync).toHaveBeenCalledWith(`${rootDir}package.json`, JSON.stringify(expectedJson, null, 2), {encoding: "utf8"});
+      expect(cliFs.writeFileSync).toHaveBeenCalledWith(resolve(join(rootDir, "package.json")), JSON.stringify(expectedJson, null, 2), {
+        encoding: "utf8"
+      });
 
-      expect(cliExeca.run).toHaveBeenCalledWith("yarn", ["install", "--production=false"], {cwd: rootDir});
-      expect(cliExeca.run).toHaveBeenCalledWith("yarn", ["add", "module1", "module2@alpha"], {cwd: rootDir});
-      expect(cliExeca.run).toHaveBeenCalledWith("yarn", ["add", "-D", "dev-module1", "dev-module2@alpha"], {cwd: rootDir});
+      expect(cliExeca.run).toHaveBeenCalledWith("yarn", ["install", "--production=false"], {cwd: rootDir, env: process.env});
+      expect(cliExeca.run).toHaveBeenCalledWith("yarn", ["add", "module1", "module2@alpha"], {cwd: rootDir, env: process.env});
+      expect(cliExeca.run).toHaveBeenCalledWith("yarn", ["add", "-D", "dev-module1", "dev-module2@alpha"], {
+        cwd: rootDir,
+        env: process.env
+      });
     });
   });
   describe("with NPM", () => {
@@ -135,8 +146,10 @@ describe("ProjectPackageJson", () => {
         "dev-module3": "6.0.0"
       });
 
-      const list = projectPackageJson.install({packageManager: "yarn"});
+      const list = projectPackageJson.install({packageManager: PackageManager.YARN});
       list.setRenderer("silent");
+
+      expect(projectPackageJson.getPackageManager(PackageManager.YARN)).toEqual(PackageManager.NPM);
 
       expect(projectPackageJson.toJSON()).toEqual({
         _id: "@",
@@ -155,6 +168,9 @@ describe("ProjectPackageJson", () => {
         readme: "ERROR: No README data found!",
         scripts: {
           build: "echo 0"
+        },
+        tsed: {
+          packageManager: "yarn"
         },
         version: "1.0.0"
       });
@@ -175,21 +191,29 @@ describe("ProjectPackageJson", () => {
         devDependencies: {
           "dev-module3": "6.0.0"
         },
-        readme: "ERROR: No README data found!",
-        _id: "@"
+        tsed: {
+          packageManager: "yarn"
+        }
       };
 
-      expect(cliFs.writeFileSync).toHaveBeenCalledWith(`${rootDir}package.json`, JSON.stringify(expectedJson, null, 2), {encoding: "utf8"});
+      expect(cliFs.writeFileSync).toHaveBeenCalledWith(resolve(join(rootDir, "package.json")), JSON.stringify(expectedJson, null, 2), {
+        encoding: "utf8"
+      });
 
-      expect(cliExeca.run).toHaveBeenCalledWith("npm", ["install", "--no-production"], {cwd: rootDir});
-      expect(cliExeca.run).toHaveBeenCalledWith("npm", ["install", "--save", "module1", "module2@alpha"], {cwd: rootDir});
-      expect(cliExeca.run).toHaveBeenCalledWith("npm", ["install", "--save-dev", "dev-module1", "dev-module2@alpha"], {cwd: rootDir});
+      expect(cliExeca.run).toHaveBeenCalledWith("npm", ["install", "--no-production"], {cwd: rootDir, env: process.env});
+      expect(cliExeca.run).toHaveBeenCalledWith("npm", ["install", "--save", "module1", "module2@alpha"], {cwd: rootDir, env: process.env});
+      expect(cliExeca.run).toHaveBeenCalledWith("npm", ["install", "--save-dev", "dev-module1", "dev-module2@alpha"], {
+        cwd: rootDir,
+        env: process.env
+      });
     });
     it("should read package.json and add dependencies (asked for npm)", async () => {
       const {projectPackageJson, cliExeca, cliFs} = await getProjectPackageJsonFixture();
       cliExeca.run.mockResolvedValue(undefined);
 
       jest.spyOn(projectPackageJson, "hasYarn").mockReturnValue(false);
+
+      projectPackageJson.setPreference("packageManager", PackageManager.NPM);
 
       projectPackageJson.set("name", "name");
       projectPackageJson.set("version", "1.0.0");
@@ -209,7 +233,7 @@ describe("ProjectPackageJson", () => {
         "dev-module3": "6.0.0"
       });
 
-      const list = projectPackageJson.install({packageManager: "npm"});
+      const list = projectPackageJson.install({packageManager: PackageManager.NPM});
       list.setRenderer("silent");
 
       expect(projectPackageJson.toJSON()).toEqual({
@@ -230,6 +254,9 @@ describe("ProjectPackageJson", () => {
         scripts: {
           build: "echo 0"
         },
+        tsed: {
+          packageManager: "npm"
+        },
         version: "1.0.0"
       });
 
@@ -249,15 +276,21 @@ describe("ProjectPackageJson", () => {
         devDependencies: {
           "dev-module3": "6.0.0"
         },
-        readme: "ERROR: No README data found!",
-        _id: "@"
+        tsed: {
+          packageManager: "npm"
+        }
       };
 
-      expect(cliFs.writeFileSync).toHaveBeenCalledWith(`${rootDir}package.json`, JSON.stringify(expectedJson, null, 2), {encoding: "utf8"});
+      expect(cliFs.writeFileSync).toHaveBeenCalledWith(resolve(join(rootDir, "package.json")), JSON.stringify(expectedJson, null, 2), {
+        encoding: "utf8"
+      });
 
-      expect(cliExeca.run).toHaveBeenCalledWith("npm", ["install", "--no-production"], {cwd: rootDir});
-      expect(cliExeca.run).toHaveBeenCalledWith("npm", ["install", "--save", "module1", "module2@alpha"], {cwd: rootDir});
-      expect(cliExeca.run).toHaveBeenCalledWith("npm", ["install", "--save-dev", "dev-module1", "dev-module2@alpha"], {cwd: rootDir});
+      expect(cliExeca.run).toHaveBeenCalledWith("npm", ["install", "--no-production"], {cwd: rootDir, env: process.env});
+      expect(cliExeca.run).toHaveBeenCalledWith("npm", ["install", "--save", "module1", "module2@alpha"], {cwd: rootDir, env: process.env});
+      expect(cliExeca.run).toHaveBeenCalledWith("npm", ["install", "--save-dev", "dev-module1", "dev-module2@alpha"], {
+        cwd: rootDir,
+        env: process.env
+      });
     });
   });
 });

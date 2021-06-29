@@ -1,5 +1,6 @@
 import {CliPackageJson, Inject, registerProvider} from "@tsed/cli-core";
 import {getValue} from "@tsed/core";
+import {ProjectConvention} from "../interfaces/ProjectConvention";
 
 export interface FeatureValue {
   type: string;
@@ -138,6 +139,18 @@ export const FEATURES_TYPEORM_CONNECTION_TYPES = [
   }
 ];
 
+const babelDevDependencies = {
+  "@babel/cli": "latest",
+  "@babel/core": "latest",
+  "@babel/node": "latest",
+  "@babel/plugin-proposal-class-properties": "latest",
+  "@babel/plugin-proposal-decorators": "latest",
+  "@babel/preset-env": "latest",
+  "@babel/preset-typescript": "latest",
+  "babel-plugin-transform-typescript-metadata": "latest",
+  "babel-watch": "latest"
+};
+
 registerProvider({
   provide: Features,
   deps: [CliPackageJson],
@@ -145,6 +158,40 @@ registerProvider({
     const cliVersion = cliPackageJson.version;
 
     return [
+      {
+        message: "Choose the target platform:",
+        type: "list",
+        name: "platform",
+        choices: [
+          {
+            name: "Express.js",
+            checked: true,
+            value: "express"
+          },
+          {
+            name: "Koa.js",
+            checked: false,
+            value: "koa"
+          }
+        ]
+      },
+      {
+        message: "Choose the convention file styling:",
+        type: "list",
+        name: "convention",
+        choices: [
+          {
+            name: "Ts.ED",
+            checked: true,
+            value: ProjectConvention.DEFAULT
+          },
+          {
+            name: "Angular",
+            checked: false,
+            value: ProjectConvention.ANGULAR
+          }
+        ]
+      },
       {
         type: "checkbox",
         name: "features",
@@ -185,7 +232,8 @@ registerProvider({
             value: {
               type: "socketio",
               dependencies: {
-                "@tsed/socketio": "{{tsedVersion}}"
+                "@tsed/socketio": "{{tsedVersion}}",
+                "socket.io": "latest"
               }
             }
           },
@@ -214,6 +262,21 @@ registerProvider({
             value: {
               type: "linter"
             }
+          },
+          {
+            name: "Bundler",
+            value: {
+              type: "bundler"
+            }
+          },
+          {
+            name: "Commands",
+            value: {
+              type: "commands",
+              dependencies: {
+                "@tsed/cli-core": cliVersion
+              }
+            }
           }
         ]
       },
@@ -223,6 +286,15 @@ registerProvider({
         name: "featuresDB",
         when: hasFeature("db"),
         choices: [
+          {
+            name: "Prisma",
+            value: {
+              type: "prisma",
+              devDependencies: {
+                "@tsed/cli-plugin-prisma": cliVersion
+              }
+            }
+          },
           {
             name: "Mongoose",
             value: {
@@ -258,6 +330,13 @@ registerProvider({
         message: "Which TypeORM you want to install?",
         choices: FEATURES_TYPEORM_CONNECTION_TYPES,
         when: hasValue("featuresDB.type", "typeorm")
+      },
+      {
+        type: "password",
+        name: "GH_TOKEN",
+        message:
+          "Enter GH_TOKEN to use the premium @tsedio/prisma package or leave blank (see https://tsed.io/tutorials/prisma-client.html)",
+        when: hasValue("featuresDB.type", "prisma")
       },
       {
         message: "Choose unit framework",
@@ -330,6 +409,52 @@ registerProvider({
             value: {
               type: "lintstaged"
             }
+          }
+        ]
+      },
+      {
+        message: "Choose your bundler",
+        type: "list",
+        name: "featuresBundler",
+        when: hasFeature("bundler"),
+        choices: [
+          {
+            name: "Babel",
+            value: {
+              type: "babel",
+              devDependencies: {
+                ...babelDevDependencies
+              }
+            }
+          },
+          {
+            name: "Webpack",
+            value: {
+              type: "babel:webpack",
+              devDependencies: {
+                ...babelDevDependencies,
+                "babel-loader": "latest",
+                webpack: "latest",
+                "webpack-cli": "latest"
+              }
+            }
+          }
+        ]
+      },
+      {
+        message: "Choose the package manager:",
+        type: "list",
+        name: "packageManager",
+        choices: [
+          {
+            name: "Yarn",
+            checked: true,
+            value: "yarn"
+          },
+          {
+            name: "NPM",
+            checked: false,
+            value: "npm"
           }
         ]
       }

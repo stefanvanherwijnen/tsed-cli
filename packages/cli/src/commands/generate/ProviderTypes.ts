@@ -38,11 +38,13 @@ export const PROVIDER_TYPES = [
   {
     name: "Pipe",
     value: "pipe",
+    baseDir: "pipes",
     model: "{{symbolName}}.pipe"
   },
   {
     name: "Interceptor",
     value: "interceptor",
+    baseDir: "interceptors",
     model: "{{symbolName}}.interceptor"
   },
   {
@@ -73,5 +75,29 @@ export const PROVIDER_TYPES = [
     value: "exception-filter",
     baseDir: "filters",
     model: "{{symbolName}}.exception-filter"
+  },
+  {
+    name: "Response Filter",
+    value: "response-filter",
+    baseDir: "filters",
+    model: "{{symbolName}}.response-filter"
+  },
+  {
+    name: "Command",
+    value: "command",
+    baseDir: "bin",
+    model: "{{symbolName}}.command"
+  },
+  {
+    name: "Prisma Service",
+    value: "prisma.service",
+    baseDir: "services",
+    model: "{{symbolName}}.service"
+  },
+  {
+    name: "Repository",
+    value: "repository",
+    baseDir: "services",
+    model: "{{symbolName}}.repository"
   }
 ];

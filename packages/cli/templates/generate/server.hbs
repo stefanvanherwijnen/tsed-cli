@@ -1,33 +1,27 @@
 import {Configuration, Inject} from "@tsed/di";
 import {PlatformApplication} from "@tsed/common";
 {{#if express}}import "@tsed/platform-express"; // /!\ keep this import
-import * as bodyParser from "body-parser";
-import * as compress from "compression";
-import * as cookieParser from "cookie-parser";
-import * as methodOverride from "method-override";
-import * as cors from "cors";
+import bodyParser from "body-parser";
+import compress from "compression";
+import cookieParser from "cookie-parser";
+import methodOverride from "method-override";
+import cors from "cors";
 {{/if}}{{#if koa}}import "@tsed/platform-koa"; // /!\ keep this import
-import * as bodyParser from "koa-bodyparser";
-import * as compress from "koa-compress";
-import * as cors from "@koa/cors";
+import bodyParser from "koa-bodyparser";
+import compress from "koa-compress";
+import cors from "@koa/cors";
 {{/if}}
 import "@tsed/ajv";{{#if swagger}}
 import "@tsed/swagger";{{/if}}{{#if mongoose}}
 import "@tsed/mongoose";{{/if}}{{#if typeorm}}
-import "@tsed/typeorm";{{/if}}{{#if mongoose}}
-import mongooseConfig from "./config/mongoose";
-{{/if}}{{#if typeorm}}
-import typeormConfig from "./config/typeorm";
-{{/if}}{{#if swagger}}
-import { IndexCtrl } from "./controllers/pages/IndexCtrl";
-{{/if}}{{#if koa}}
+import "@tsed/typeorm";{{/if}}
+import {config, rootDir} from "./config";{{#if swagger}}
+import {IndexCtrl} from "{{indexControllerPath}}";{{/if}}{{#if koa}}
 
 const methodOverride = require("koa-override");{{/if}}
 
-export const rootDir = __dirname;
-
 @Configuration({
-  rootDir,
+  ...config,
   acceptMimes: ["application/json"],
   httpPort: process.env.PORT || 8083,
   httpsPort: false, // CHANGE
@@ -51,21 +45,6 @@ export const rootDir = __dirname;
   views: {
     root: `${rootDir}/../views`,
     viewEngine: "ejs"
-  },
-  {{/if}}
-  {{#if typeorm}}
-  typeorm: typeormConfig,
-  {{/if}}
-  {{#if mongoose}}
-  mongoose: mongooseConfig,
-  {{/if}}
-  {{#if graphql}}
-  graphql: {
-    default: {
-      path: "/graphql",
-      buildSchemaOptions: {
-      }
-    }
   },
   {{/if}}
   exclude: [

@@ -6,20 +6,23 @@ import {
   Command,
   CommandProvider,
   Configuration,
+  createTasks,
   createTasksRunner,
   Inject,
+  InstallOptions,
+  PackageManager,
   ProjectPackageJson,
   QuestionOptions,
-  RootRendererService,
-  SrcRendererService
+  RootRendererService
 } from "@tsed/cli-core";
 import {camelCase, paramCase, pascalCase} from "change-case";
-import * as Listr from "listr";
 import {basename, join} from "path";
 import {DEFAULT_TSED_TAGS} from "../../constants";
+import {ProjectConvention} from "../../interfaces/ProjectConvention";
+import {OutputFilePathPipe} from "../../pipes/OutputFilePathPipe";
 import {Features, FeatureValue} from "../../services/Features";
 
-export interface InitCmdContext extends CliDefaultOptions {
+export interface InitCmdContext extends CliDefaultOptions, InstallOptions {
   platform: "express" | "koa";
   root: string;
   srcDir: string;
@@ -27,7 +30,11 @@ export interface InitCmdContext extends CliDefaultOptions {
   tsedVersion: string;
   features: FeatureValue[];
   featuresTypeORM?: FeatureValue;
-  packageManager?: "yarn" | "npm";
+  babel?: boolean;
+  webpack?: boolean;
+  convention?: ProjectConvention;
+  commands?: boolean;
+  GH_TOKEN?: string;
 
   [key: string]: any;
 }
@@ -67,10 +74,10 @@ export class InitCmd implements CommandProvider {
   protected cliService: CliService;
 
   @Inject()
-  protected srcRenderer: SrcRendererService;
+  protected rootRenderer: RootRendererService;
 
   @Inject()
-  protected rootRenderer: RootRendererService;
+  protected outputFilePathPipe: OutputFilePathPipe;
 
   @Inject()
   protected fs: CliFs;
@@ -87,50 +94,12 @@ export class InitCmd implements CommandProvider {
           return paramCase(input);
         }
       },
-      {
-        message: "Choose the target platform:",
-        type: "list",
-        name: "platform",
-        choices: [
-          {
-            name: "Express.js",
-            checked: true,
-            value: "express"
-          },
-          {
-            name: "Koa.js",
-            checked: false,
-            value: "koa"
-          }
-        ]
-      },
-      ...this.features,
-      {
-        message: "Choose the package manager:",
-        type: "list",
-        name: "packageManager",
-        choices: [
-          {
-            name: "Yarn",
-            checked: true,
-            value: "yarn"
-          },
-          {
-            name: "NPM",
-            checked: false,
-            value: "npm"
-          }
-        ]
-      }
+      ...this.features
     ];
   }
 
   $mapContext(ctx: Partial<InitCmdContext>): InitCmdContext {
-    ctx.projectName = paramCase(ctx.projectName || basename(this.packageJson.dir));
-
-    if (ctx.root && ctx.root !== "." && !this.packageJson.dir.endsWith(ctx.root)) {
-      this.packageJson.dir = join(this.packageJson.dir, ctx.projectName);
-    }
+    this.resolveRootDir(ctx);
 
     const features: FeatureValue[] = [];
 
@@ -151,6 +120,8 @@ export class InitCmd implements CommandProvider {
       ...ctx,
       features,
       srcDir: this.configuration.project?.srcDir,
+      npm: ctx.packageManager === PackageManager.NPM,
+      yarn: ctx.packageManager === PackageManager.YARN,
       express: ctx.platform === "express",
       koa: ctx.platform === "koa",
       platformSymbol: pascalCase(`Platform ${ctx.platform}`)
@@ -159,15 +130,27 @@ export class InitCmd implements CommandProvider {
 
   async $beforeExec(ctx: InitCmdContext): Promise<any> {
     this.fs.ensureDirSync(this.packageJson.dir);
-
     this.packageJson.name = ctx.projectName;
+
+    ctx.packageManager && this.packageJson.setPreference("packageManager", ctx.packageManager);
+    ctx.convention && this.packageJson.setPreference("convention", ctx.convention);
+    ctx.GH_TOKEN && this.packageJson.setGhToken(ctx.GH_TOKEN);
+
     this.addDependencies(ctx);
     this.addDevDependencies(ctx);
-    this.addScripts();
+    this.addScripts(ctx);
     this.addFeatures(ctx);
 
     await createTasksRunner(
       [
+        {
+          title: "Write RC files",
+          skip: () => !ctx.GH_TOKEN,
+          task: () =>
+            this.rootRenderer.renderAll(["/init/.npmrc.hbs", "/init/.yarnrc.hbs"], ctx, {
+              baseDir: "/init"
+            })
+        },
         {
           title: "Install plugins",
           task: () => this.packageJson.install(ctx)
@@ -178,10 +161,7 @@ export class InitCmd implements CommandProvider {
         },
         {
           title: "Install plugins dependencies",
-          task: () => {
-            this.cliPlugins.addPluginsDependencies();
-            return this.packageJson.install(ctx);
-          }
+          task: () => this.cliPlugins.addPluginsDependencies(ctx)
         }
       ],
       ctx
@@ -200,78 +180,111 @@ export class InitCmd implements CommandProvider {
         type: "controller",
         route: "hello-world",
         name: "HelloWorld"
-      }))
+      })),
+      ...(ctx.commands
+        ? await this.cliService.getTasks("generate", {
+            type: "command",
+            route: "hello",
+            name: "hello"
+          })
+        : [])
     ];
+
+    const indexCtrlBaseName = basename(
+      `${this.outputFilePathPipe.transform({
+        name: "Index",
+        type: "controller",
+        format: ctx.convention
+      })}.ts`
+    );
 
     return [
       {
         title: "Generate project files",
         task: (ctx: any) => {
-          return new Listr(
+          return createTasks(
             [
               {
                 title: "Root files",
                 task: () =>
                   this.rootRenderer.renderAll(
                     [
-                      "init/.dockerignore.hbs",
-                      "init/.gitignore.hbs",
-                      "init/docker-compose.yml.hbs",
-                      "init/Dockerfile.hbs",
-                      "init/README.md.hbs",
-                      "init/tsconfig.compile.json.hbs",
-                      "init/tsconfig.json.hbs"
-                    ],
-                    ctx
+                      "/init/.dockerignore.hbs",
+                      "/init/.gitignore.hbs",
+                      ctx.babel && "/init/.babelrc.hbs",
+                      ctx.webpack && "/init/webpack.config.js.hbs",
+                      "/init/docker-compose.yml.hbs",
+                      "/init/Dockerfile.hbs",
+                      "/init/README.md.hbs",
+                      "/init/tsconfig.compile.json.hbs",
+                      "/init/tsconfig.json.hbs",
+                      "/init/src/index.ts.hbs",
+                      "/init/src/config/env/index.ts.hbs",
+                      "/init/src/config/logger/index.ts.hbs",
+                      "/init/src/config/index.ts.hbs",
+                      ctx.commands && "/init/src/bin/index.ts.hbs",
+                      ctx.swagger && "/init/views/index.ejs.hbs",
+                      ctx.swagger && {
+                        path: "/init/src/controllers/pages/IndexCtrl.ts.hbs",
+                        basename: indexCtrlBaseName
+                      }
+                    ].filter(Boolean),
+                    ctx,
+                    {
+                      baseDir: "/init"
+                    }
                   )
-              },
-              {
-                title: "Create index",
-                task: async () => {
-                  return this.srcRenderer.renderAll(["init/index.ts.hbs"], ctx);
-                }
-              },
-              {
-                title: "Create Views",
-                enabled() {
-                  return ctx.swagger;
-                },
-                task: async () => {
-                  return this.rootRenderer.render("init/index.ejs.hbs", ctx, {
-                    ...ctx,
-                    rootDir: `${this.rootRenderer.rootDir}/views`
-                  });
-                }
-              },
-              {
-                title: "Create HomeCtrl",
-                enabled() {
-                  return ctx.swagger;
-                },
-                task: async () => {
-                  return this.srcRenderer.renderAll(["init/IndexCtrl.ts.hbs"], ctx, {
-                    ...ctx,
-                    rootDir: `${this.srcRenderer.rootDir}/controllers/pages`
-                  });
-                }
               },
               ...subTasks
             ],
-            {concurrent: false}
+            {...ctx, concurrent: false}
           );
         }
       }
     ];
   }
 
-  addScripts(): void {
+  resolveRootDir(ctx: Partial<InitCmdContext>) {
+    const rootDirName = paramCase(ctx.projectName || basename(this.packageJson.dir));
+
+    if (this.packageJson.dir.endsWith(rootDirName)) {
+      ctx.projectName = ctx.projectName || rootDirName;
+      ctx.root = ".";
+      return;
+    }
+
+    ctx.projectName = ctx.projectName || rootDirName;
+
+    if (ctx.root && ctx.root !== ".") {
+      this.packageJson.dir = join(this.packageJson.dir, rootDirName);
+      ctx.root = ".";
+    }
+  }
+
+  addScripts(ctx: InitCmdContext): void {
+    const runner = this.packageJson.getRunCmd();
+
     this.packageJson.addScripts({
-      build: "yarn tsc",
+      build: `${runner} tsc`,
       tsc: "tsc --project tsconfig.compile.json",
       "tsc:w": "tsc --project tsconfig.json -w",
-      start: 'nodemon --watch "src/**/*.ts" --ignore "node_modules/**/*" --exec ts-node src/index.ts',
+      start: "tsnd --inspect --ignore-watch node_modules --respawn --transpile-only -r tsconfig-paths/register src/index.ts",
       "start:prod": "cross-env NODE_ENV=production node dist/index.js"
     });
+
+    if (ctx.babel) {
+      this.packageJson.addScripts({
+        build: `${runner} tsc && babel src --out-dir dist --extensions ".ts,.tsx" --source-maps inline`,
+        start: "babel-watch --extensions .ts src/index.ts"
+      });
+    }
+
+    if (ctx.webpack) {
+      this.packageJson.addScripts({
+        bundle: `${runner} tsc && cross-env NODE_ENV=production webpack`,
+        "start:bundle": "cross-env NODE_ENV=production node dist/app.bundle.js"
+      });
+    }
   }
 
   addDependencies(ctx: InitCmdContext) {
@@ -284,7 +297,8 @@ export class InitCmd implements CommandProvider {
       "@tsed/schema": ctx.tsedVersion,
       "@tsed/json-mapper": ctx.tsedVersion,
       ajv: "latest",
-      "cross-env": "latest"
+      "cross-env": "latest",
+      dotenv: "latest"
     });
   }
 
@@ -292,13 +306,22 @@ export class InitCmd implements CommandProvider {
     this.packageJson.addDevDependencies(
       {
         "@types/node": "latest",
-        concurrently: "latest",
-        nodemon: "latest",
+        "@types/multer": "latest",
         "ts-node": "latest",
+        "tsconfig-paths": "latest",
         typescript: "latest"
       },
       ctx
     );
+
+    if (!ctx.babel) {
+      this.packageJson.addDevDependencies(
+        {
+          "ts-node-dev": "latest"
+        },
+        ctx
+      );
+    }
   }
 
   addFeatures(ctx: InitCmdContext) {

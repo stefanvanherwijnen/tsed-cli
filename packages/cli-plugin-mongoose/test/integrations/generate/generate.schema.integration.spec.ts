@@ -18,15 +18,15 @@ describe("Generate Schema", () => {
   it("should generate the template", async () => {
     const cliService = CliPlatformTest.get<CliService>(CliService);
     const projectPackageJson = CliPlatformTest.get<ProjectPackageJson>(ProjectPackageJson);
-    // @ts-ignore
-    projectPackageJson.raw = {
+
+    projectPackageJson.setRaw({
       name: "",
       version: "1.0.0",
       description: "",
       scripts: {},
       dependencies: {},
       devDependencies: {}
-    };
+    });
 
     await cliService.exec("generate", {
       rootDir: "./project-data",
@@ -37,7 +37,7 @@ describe("Generate Schema", () => {
     expect(FakeCliFs.getKeys()).toEqual(["project-name/src/models", "project-name/src/models/ProductSchema.ts"]);
 
     const result = FakeCliFs.entries.get("project-name/src/models/ProductSchema.ts");
-    expect(result).toContain('import { Property } from "@tsed/common";');
+    expect(result).toContain('import { Property } from "@tsed/schema";');
     expect(result).toContain('import { Schema } from "@tsed/mongoose";');
     expect(result).toContain("@Schema()");
     expect(result).toContain("export class ProductSchema {");

@@ -23,7 +23,7 @@ describe("GenerateCmd", () => {
           name: "type",
           source: expect.any(Function),
           type: "autocomplete",
-          when: true
+          when: expect.any(Function)
         });
         expect(result[1].message).toEqual("Which name ?");
         expect(result[1].default({type: "name"})).toEqual("Name");
@@ -55,7 +55,7 @@ describe("GenerateCmd", () => {
           source: expect.any(Function),
           name: "type",
           type: "autocomplete",
-          when: false
+          when: expect.any(Function)
         });
         expect(result[1].message).toEqual("Which name ?");
         expect(result[1].default({type: "name"})).toEqual("Name");
@@ -94,7 +94,7 @@ describe("GenerateCmd", () => {
       const tasks = await command.$exec(options as any);
 
       // THEN
-      expect(tasks.length).toEqual(1);
+      expect(tasks.length).toEqual(2);
       expect(tasks[0].title).toEqual("Generate controller file to 'controllers/Test.ts'");
 
       await tasks[0].task();
@@ -105,12 +105,14 @@ describe("GenerateCmd", () => {
           name: "test",
           route: "/test",
           symbolName: "Test",
+          symbolParamName: "test",
           symbolPath: "controllers/Test",
           symbolPathBasename: "Test",
           type: "controller",
           express: false,
           koa: false,
-          platformSymbol: "PlatformUndefined"
+          platformSymbol: "PlatformUndefined",
+          indexControllerPath: "./controllers/pages/IndexController"
         },
         {
           output: "controllers/Test.ts"
@@ -141,7 +143,7 @@ describe("GenerateCmd", () => {
       const tasks = await command.$exec(options as any);
 
       // THEN
-      expect(tasks.length).toEqual(1);
+      expect(tasks.length).toEqual(2);
       expect(tasks[0].title).toEqual("Generate controller file to 'controllers/Test.ts'");
 
       await tasks[0].task();
@@ -152,12 +154,14 @@ describe("GenerateCmd", () => {
           name: "test",
           route: "/test",
           symbolName: "Test",
+          symbolParamName: "test",
           symbolPath: "controllers/Test",
           symbolPathBasename: "Test",
           type: "controller",
           express: false,
           koa: false,
-          platformSymbol: "PlatformUndefined"
+          platformSymbol: "PlatformUndefined",
+          indexControllerPath: "./controllers/pages/IndexController"
         },
         {
           output: "controllers/Test.ts"

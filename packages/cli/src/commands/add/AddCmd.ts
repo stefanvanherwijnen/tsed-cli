@@ -1,9 +1,5 @@
 import {Inject} from "@tsed/di";
-import {Command} from "../decorators/command";
-import {CliDefaultOptions} from "../interfaces/CliDefaultOptions";
-import {CommandProvider, QuestionOptions} from "../interfaces/CommandProvider";
-import {CliPlugins} from "../services/CliPlugins";
-import {ProjectPackageJson} from "../services/ProjectPackageJson";
+import {CliDefaultOptions, CliPlugins, Command, CommandProvider, ProjectPackageJson, QuestionOptions} from "@tsed/cli-core";
 
 export interface AddCmdOptions extends CliDefaultOptions {
   name: string;
@@ -47,7 +43,7 @@ export class AddCmd implements CommandProvider {
     return [
       {
         title: "Install plugins",
-        task: () => this.packageJson.install()
+        task: () => this.packageJson.install(ctx as any)
       },
       {
         title: "Load plugins",
@@ -56,8 +52,7 @@ export class AddCmd implements CommandProvider {
       {
         title: "Install plugins dependencies",
         task: () => {
-          this.cliPlugins.addPluginsDependencies();
-          return this.packageJson.install();
+          return this.cliPlugins.addPluginsDependencies(ctx);
         }
       }
     ];

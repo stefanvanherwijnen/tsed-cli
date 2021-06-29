@@ -1,7 +1,6 @@
-import {getValue} from "@tsed/core";
+import {getValue, setValue} from "@tsed/core";
 import {Configuration, Inject, Injectable} from "@tsed/di";
 import * as Fs from "fs-extra";
-import * as Listr from "listr";
 import {dirname, join} from "path";
 import * as readPkgUp from "read-pkg-up";
 import * as semver from "semver";
@@ -10,9 +9,13 @@ import {catchError} from "rxjs/operators";
 import {PackageJson} from "../interfaces/PackageJson";
 import {CliExeca} from "./CliExeca";
 import {CliFs} from "./CliFs";
+import {createTasks} from "../utils/createTasksRunner";
+import {PackageManager, ProjectPreferences} from "../interfaces/ProjectPreferences";
 
 export interface InstallOptions {
-  packageManager?: "npm" | "yarn";
+  packageManager?: PackageManager;
+
+  [key: string]: any;
 }
 
 function getEmptyPackageJson(configuration: Configuration) {
@@ -82,27 +85,33 @@ function mapPackagesWithValidVersion(deps: any) {
   }, {});
 }
 
+function defaultPreferences(pkg?: any): Record<string, any> {
+  return {
+    packageManager: getValue(pkg, "scripts.build", "").includes("npm ") ? PackageManager.NPM : PackageManager.YARN
+  };
+}
+
 @Injectable()
 export class ProjectPackageJson {
   public rewrite = false;
   public reinstall = false;
+  private GH_TOKEN: string;
 
   @Inject(CliExeca)
   protected cliExeca: CliExeca;
-
   @Inject(CliFs)
   protected fs: CliFs;
-
-  private raw: PackageJson = {
-    name: "",
-    version: "1.0.0",
-    description: "",
-    scripts: {},
-    dependencies: {},
-    devDependencies: {}
-  };
+  private raw: PackageJson;
 
   constructor(@Configuration() private configuration: Configuration) {
+    this.setRaw({
+      name: "",
+      version: "1.0.0",
+      description: "",
+      scripts: {},
+      dependencies: {},
+      devDependencies: {}
+    });
     this.read();
   }
 
@@ -156,12 +165,34 @@ export class ProjectPackageJson {
     };
   }
 
+  get preferences(): ProjectPreferences {
+    return this.raw[this.configuration.name];
+  }
+
   toJSON() {
     return this.raw;
   }
 
   read() {
-    this.raw = getPackageJson(this.configuration);
+    this.setRaw(getPackageJson(this.configuration));
+  }
+
+  setRaw(pkg: any) {
+    const projectPreferences = this.configuration.defaultProjectPreferences;
+    const preferences = getValue(pkg, this.configuration.name);
+
+    this.raw = {
+      ...pkg,
+      [this.configuration.name]: {
+        ...defaultPreferences(pkg),
+        ...(projectPreferences && projectPreferences(pkg)),
+        ...preferences
+      }
+    };
+  }
+
+  getRunCmd() {
+    return this.preferences.packageManager === "npm" ? "npm run" : "yarn run";
   }
 
   addDevDependency(pkg: string, version?: string) {
@@ -221,6 +252,12 @@ export class ProjectPackageJson {
     return this;
   }
 
+  setPreference(key: keyof ProjectPreferences, value: any) {
+    setValue(this.raw, `${this.configuration.name}.${key}`, value);
+    this.rewrite = true;
+    return;
+  }
+
   set(key: string, value: any) {
     this.raw[key] = value;
 
@@ -247,7 +284,9 @@ export class ProjectPackageJson {
       },
       devDependencies: {
         ...mapPackagesWithValidVersion(this.raw.devDependencies)
-      }
+      },
+      readme: undefined,
+      _id: undefined
     };
 
     return this.fs.writeFileSync(this.path, JSON.stringify(json, null, 2), {encoding: "utf8"});
@@ -255,7 +294,7 @@ export class ProjectPackageJson {
 
   hasYarn() {
     try {
-      this.cliExeca.runSync("yarn", ["--version"]);
+      this.cliExeca.runSync(PackageManager.YARN, ["--version"]);
 
       return true;
     } catch (er) {
@@ -264,15 +303,11 @@ export class ProjectPackageJson {
   }
 
   install(options: InstallOptions = {}) {
-    options.packageManager = options.packageManager || "yarn";
+    const packageManager = this.getPackageManager(options.packageManager);
 
-    if (options.packageManager === "yarn" && !this.hasYarn()) {
-      options.packageManager = "npm";
-    }
+    const tasks = packageManager === "yarn" ? this.installWithYarn(options) : this.installWithNpm(options);
 
-    const tasks = options.packageManager === "yarn" ? this.installWithYarn(options) : this.installWithNpm(options);
-
-    return new Listr(
+    return createTasks(
       [
         {
           title: "Write package.json",
@@ -284,11 +319,12 @@ export class ProjectPackageJson {
           title: "Clean",
           task: () => {
             this.reinstall = false;
+            this.rewrite = false;
             this.read();
           }
         }
       ],
-      {concurrent: false}
+      {...(options as any), concurrent: false}
     );
   }
 
@@ -313,14 +349,36 @@ export class ProjectPackageJson {
         return throwError(error);
       });
 
-    return this.cliExeca.run("npm", ["run", npmTask], options).pipe(errorPipe());
+    return this.cliExeca.run(this.getPackageManager(), ["run", npmTask], options).pipe(errorPipe());
+  }
+
+  getPackageManager(packageManager?: PackageManager): PackageManager {
+    if (this.preferences.packageManager) {
+      packageManager = this.preferences.packageManager;
+    }
+
+    packageManager = packageManager || PackageManager.YARN;
+
+    if (packageManager === PackageManager.YARN && !this.hasYarn()) {
+      packageManager = PackageManager.NPM;
+    }
+
+    return packageManager;
+  }
+
+  setGhToken(GH_TOKEN: string) {
+    this.GH_TOKEN = GH_TOKEN;
   }
 
   protected installWithYarn({verbose}: any) {
     const devDeps = mapPackagesWithInvalidVersion(this.devDependencies);
     const deps = mapPackagesWithInvalidVersion(this.dependencies);
     const options = {
-      cwd: this.dir
+      cwd: this.dir,
+      env: {
+        ...process.env,
+        GH_TOKEN: this.GH_TOKEN
+      }
     };
 
     const errorPipe = () =>
@@ -337,17 +395,23 @@ export class ProjectPackageJson {
         title: "Installing dependencies using Yarn",
         skip: () => !this.reinstall,
         task: () =>
-          this.cliExeca.run("yarn", ["install", "--production=false", verbose && "--verbose"].filter(Boolean), options).pipe(errorPipe())
+          this.cliExeca
+            .run(PackageManager.YARN, ["install", "--production=false", verbose && "--verbose"].filter(Boolean), options)
+            .pipe(errorPipe())
       },
       {
         title: "Add dependencies using Yarn",
         skip: () => !deps.length,
-        task: () => this.cliExeca.run("yarn", ["add", verbose && "--verbose", ...deps].filter(Boolean), options).pipe(errorPipe())
+        task: () =>
+          this.cliExeca.run(PackageManager.YARN, ["add", verbose && "--verbose", ...deps].filter(Boolean), options).pipe(errorPipe())
       },
       {
         title: "Add devDependencies using Yarn",
         skip: () => !devDeps.length,
-        task: () => this.cliExeca.run("yarn", ["add", "-D", verbose && "--verbose", ...devDeps].filter(Boolean), options).pipe(errorPipe())
+        task: () =>
+          this.cliExeca
+            .run(PackageManager.YARN, ["add", "-D", verbose && "--verbose", ...devDeps].filter(Boolean), options)
+            .pipe(errorPipe())
       }
     ];
   }
@@ -356,7 +420,11 @@ export class ProjectPackageJson {
     const devDeps = mapPackagesWithInvalidVersion(this.devDependencies);
     const deps = mapPackagesWithInvalidVersion(this.dependencies);
     const options = {
-      cwd: this.dir
+      cwd: this.dir,
+      env: {
+        ...process.env,
+        GH_TOKEN: this.GH_TOKEN
+      }
     };
 
     return [
@@ -366,18 +434,19 @@ export class ProjectPackageJson {
           return !this.reinstall;
         },
         task: () => {
-          return this.cliExeca.run("npm", ["install", "--no-production", verbose && "--verbose"].filter(Boolean), options);
+          return this.cliExeca.run(PackageManager.NPM, ["install", "--no-production", verbose && "--verbose"].filter(Boolean), options);
         }
       },
       {
         title: "Add dependencies using npm",
         skip: () => !deps.length,
-        task: () => this.cliExeca.run("npm", ["install", "--save", verbose && "--verbose", ...deps].filter(Boolean), options)
+        task: () => this.cliExeca.run(PackageManager.NPM, ["install", "--save", verbose && "--verbose", ...deps].filter(Boolean), options)
       },
       {
         title: "Add devDependencies using npm",
         skip: () => !devDeps.length,
-        task: () => this.cliExeca.run("npm", ["install", "--save-dev", verbose && "--verbose", ...devDeps].filter(Boolean), options)
+        task: () =>
+          this.cliExeca.run(PackageManager.NPM, ["install", "--save-dev", verbose && "--verbose", ...devDeps].filter(Boolean), options)
       }
     ];
   }

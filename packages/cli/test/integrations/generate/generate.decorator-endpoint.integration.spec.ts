@@ -17,15 +17,14 @@ describe("Generate endpoint decorator", () => {
   it("should generate a template with the right options", async () => {
     const cliService = CliPlatformTest.get<CliService>(CliService);
     const projectPackageJson = CliPlatformTest.get<ProjectPackageJson>(ProjectPackageJson);
-    // @ts-ignore
-    projectPackageJson.raw = {
+    projectPackageJson.setRaw({
       name: "",
       version: "1.0.0",
       description: "",
       scripts: {},
       dependencies: {},
       devDependencies: {}
-    };
+    });
 
     await cliService.exec("generate", {
       rootDir: "./project-data",
@@ -38,7 +37,7 @@ describe("Generate endpoint decorator", () => {
 
     const result = FakeCliFs.entries.get("project-name/src/decorators/Test.ts");
 
-    expect(result).toContain('import {applyDecorators} from "@tsed/core"');
+    expect(result).toContain('import {useDecorators} from "@tsed/core"');
     expect(result).toContain('import {EndpointFn, EndpointMetadata} from "@tsed/common"');
     expect(result).toContain("export interface TestOptions {");
     expect(result).toContain("export function Test(options: TestOptions): MethodDecorator");

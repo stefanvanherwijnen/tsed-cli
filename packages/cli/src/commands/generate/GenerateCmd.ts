@@ -1,10 +1,14 @@
-import {CliDefaultOptions, Command, CommandProvider, Inject, SrcRendererService} from "@tsed/cli-core";
-import {pascalCase} from "change-case";
+import {CliDefaultOptions, Command, CommandProvider, Inject, ProjectPackageJson, SrcRendererService} from "@tsed/cli-core";
+import {paramCase, pascalCase} from "change-case";
+import {basename} from "path";
 import {ClassNamePipe} from "../../pipes/ClassNamePipe";
 import {OutputFilePathPipe} from "../../pipes/OutputFilePathPipe";
 import {RoutePipe} from "../../pipes/RoutePipe";
 import {ProvidersInfoService} from "../../services/ProvidersInfoService";
 import {PROVIDER_TYPES} from "./ProviderTypes";
+import {ProjectConvention} from "../../interfaces/ProjectConvention";
+
+const normalizePath = require("normalize-path");
 
 export interface GenerateCmdContext extends CliDefaultOptions {
   type: string;
@@ -15,6 +19,7 @@ export interface GenerateCmdContext extends CliDefaultOptions {
   symbolName: string;
   symbolPath: string;
   symbolPathBasename: string;
+  convention: ProjectConvention;
 }
 
 const DECORATOR_TYPES = [
@@ -67,6 +72,9 @@ export class GenerateCmd implements CommandProvider {
   @Inject()
   srcRenderService: SrcRendererService;
 
+  @Inject()
+  projectPackageJson: ProjectPackageJson;
+
   constructor(private providersList: ProvidersInfoService) {
     PROVIDER_TYPES.forEach((info) => {
       this.providersList.add(
@@ -79,9 +87,10 @@ export class GenerateCmd implements CommandProvider {
   }
 
   $prompt(initialOptions: Partial<GenerateCmdContext>) {
-    const providers = this.providersList.toArray();
     const getName = (state: any) =>
       initialOptions.name || pascalCase(state.name || initialOptions.name || state.type || initialOptions.type);
+
+    const proposedProviders = this.providersList.findProviders(initialOptions.type);
 
     return [
       {
@@ -89,8 +98,8 @@ export class GenerateCmd implements CommandProvider {
         name: "type",
         message: "Which type of provider ?",
         default: initialOptions.type,
-        when: !initialOptions.type,
-        source: searchFactory(providers)
+        when: () => proposedProviders.length > 1,
+        source: searchFactory(proposedProviders)
       },
       {
         type: "input",
@@ -159,16 +168,33 @@ export class GenerateCmd implements CommandProvider {
     let {type = ""} = ctx;
     type = type.toLowerCase();
 
+    if (ctx.name === "prisma" && ctx.name) {
+      type = "prisma.service";
+    }
+
+    const symbolName = this.classNamePipe.transform({name, type, format: ProjectConvention.DEFAULT});
+    const symbolParamName = paramCase(symbolName);
+
     return {
       ...ctx,
       type,
       route: ctx.route ? this.routePipe.transform(ctx.route) : "",
-      symbolName: this.classNamePipe.transform({name, type}),
-      symbolPath: this.outputFilePathPipe.transform({name, type}),
-      symbolPathBasename: this.classNamePipe.transform({name, type}),
+      symbolName,
+      symbolParamName,
+      symbolPath: normalizePath(
+        this.outputFilePathPipe.transform({
+          name,
+          type
+        })
+      ),
+      symbolPathBasename: normalizePath(this.classNamePipe.transform({name, type})),
       express: ctx.platform === "express",
       koa: ctx.platform === "koa",
-      platformSymbol: pascalCase(`Platform ${ctx.platform}`)
+      platformSymbol: pascalCase(`Platform ${ctx.platform}`),
+      indexControllerPath:
+        this.projectPackageJson.preferences.convention === ProjectConvention.ANGULAR
+          ? "./controllers/pages/index.controller"
+          : "./controllers/pages/IndexController"
     } as GenerateCmdContext;
   }
 
@@ -177,6 +203,7 @@ export class GenerateCmd implements CommandProvider {
 
     if (this.providersList.isMyProvider(ctx.type, GenerateCmd)) {
       const type = [ctx.type, ctx.templateType].filter(Boolean).join(".");
+
       const template = `generate/${type}.hbs`;
 
       return [
@@ -186,6 +213,25 @@ export class GenerateCmd implements CommandProvider {
             this.srcRenderService.render(template, ctx, {
               output: `${symbolPath}.ts`
             })
+        },
+        {
+          title: `Update bin/index`,
+          skip() {
+            return ctx.type !== "command";
+          },
+          task: () => {
+            return this.srcRenderService.update("bin/index.ts", [
+              {
+                type: "import",
+                content: `import {${ctx.symbolName}} from "./${basename(symbolPath)}";`
+              },
+              {
+                type: "insert-after",
+                pattern: /commands: \[/,
+                content: `  ${ctx.symbolName}`
+              }
+            ]);
+          }
         }
       ];
     }

@@ -66,56 +66,6 @@ describe("UpdateCmd", () => {
         }
       ]);
     });
-    it("should return empty prompts", async () => {
-      const projectPkg = CliPlatformTest.get<ProjectPackageJson>(ProjectPackageJson);
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      projectPkg.raw = {
-        name: "project",
-        version: "1.9.0",
-        description: "",
-        scripts: {},
-        dependencies: {},
-        devDependencies: {}
-      };
-
-      const npmClientRegistry = {
-        info(pkg: string) {
-          if (pkg === "@tsed/common") {
-            return {
-              versions: {
-                "6.0.0-alpha.4": {
-                  version: "6.0.0-alpha.4"
-                },
-                "6.0.0-alpha.3": {
-                  version: "6.0.0-alpha.3"
-                },
-                "6.0.0-alpha.2": {
-                  version: "6.0.0-alpha.2"
-                },
-                "6.0.0-alpha.1": {
-                  version: "6.0.0-alpha.1"
-                }
-              }
-            };
-          }
-        }
-      };
-
-      const command = await CliPlatformTest.invoke<UpdateCmd>(UpdateCmd, [
-        {
-          token: NpmRegistryClient,
-          use: npmClientRegistry
-        }
-      ]);
-      const context = {
-        version: "5.50.0"
-      };
-
-      const result = await command.$prompt(context);
-
-      expect(result).toEqual([]);
-    });
   });
   describe("$exec()", () => {
     it("should update dependencies", async () => {
@@ -148,30 +98,36 @@ describe("UpdateCmd", () => {
         }
       };
 
-      const command = await CliPlatformTest.invoke<UpdateCmd>(UpdateCmd, [
-        {
-          token: NpmRegistryClient,
-          use: npmClientRegistry
-        }
-      ]);
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      command.projectPackage.raw = {
-        name: "project",
-        version: "1.9.0",
-        description: "",
-        scripts: {},
+      const projectPackageJson = {
         dependencies: {
           "@tsed/core": "5.50.1",
           "@tsed/di": "5.50.1",
           "@tsed/common": "5.50.1",
-          "ts-log-debug": "5.4.0"
+          "@tsed/logger": "5.4.0"
         },
         devDependencies: {
           "@tsed/cli-plugin-typeorm": "1.3.0",
           "@tsed/cli-plugin-eslint": "1.3.0"
-        }
+        },
+        addDependency(name: string, version: string) {
+          this.dependencies[name] = version;
+        },
+        addDevDependency(name: string, version: string) {
+          this.devDependencies[name] = version;
+        },
+        install() {}
       };
+
+      const command = await CliPlatformTest.invoke<UpdateCmd>(UpdateCmd, [
+        {
+          token: NpmRegistryClient,
+          use: npmClientRegistry
+        },
+        {
+          token: ProjectPackageJson,
+          use: projectPackageJson
+        }
+      ]);
 
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore

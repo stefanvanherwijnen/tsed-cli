@@ -18,15 +18,15 @@ describe("Generate middleware decorator", () => {
   it("should generate a template with the right options (before)", async () => {
     const cliService = CliPlatformTest.get<CliService>(CliService);
     const projectPackageJson = CliPlatformTest.get<ProjectPackageJson>(ProjectPackageJson);
-    // @ts-ignore
-    projectPackageJson.raw = {
+
+    projectPackageJson.setRaw({
       name: "",
       version: "1.0.0",
       description: "",
       scripts: {},
       dependencies: {},
       devDependencies: {}
-    };
+    });
 
     await cliService.exec("generate", {
       rootDir: "./project-data",
@@ -40,7 +40,7 @@ describe("Generate middleware decorator", () => {
 
     const result = FakeCliFs.entries.get("project-name/src/decorators/Test.ts");
 
-    expect(result).toContain('import {applyDecorators, StoreSet} from "@tsed/core"');
+    expect(result).toContain('import {useDecorators, StoreSet} from "@tsed/core"');
     expect(result).toContain("export interface TestOptions {");
     expect(result).toContain("@Middleware()");
     expect(result).toContain("export function Test(options: TestOptions): MethodDecorator");
@@ -51,15 +51,14 @@ describe("Generate middleware decorator", () => {
   it("should generate a template with the right options (after)", async () => {
     const cliService = CliPlatformTest.get<CliService>(CliService);
     const projectPackageJson = CliPlatformTest.get<ProjectPackageJson>(ProjectPackageJson);
-    // @ts-ignore
-    projectPackageJson.raw = {
+    projectPackageJson.setRaw({
       name: "",
       version: "1.0.0",
       description: "",
       scripts: {},
       dependencies: {},
       devDependencies: {}
-    };
+    });
 
     await cliService.exec("generate", {
       rootDir: "./project-data",
@@ -73,7 +72,7 @@ describe("Generate middleware decorator", () => {
 
     const result = FakeCliFs.entries.get("project-name/src/decorators/Test.ts");
 
-    expect(result).toContain('import {applyDecorators, StoreSet} from "@tsed/core"');
+    expect(result).toContain('import {useDecorators, StoreSet} from "@tsed/core"');
     expect(result).toContain("export interface TestOptions {");
     expect(result).toContain("@Middleware()");
     expect(result).toContain("export function Test(options: TestOptions): MethodDecorator");
