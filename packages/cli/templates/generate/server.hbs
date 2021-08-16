@@ -18,7 +18,9 @@ import "@tsed/typeorm";{{/if}}
 import {config, rootDir} from "./config";{{#if swagger}}
 import {IndexCtrl} from "{{indexControllerPath}}";{{/if}}{{#if koa}}
 
-const methodOverride = require("koa-override");{{/if}}
+const methodOverride = require("koa-override");{{/if}}{{#if oidc}}
+import {InteractionsCtrl} from 'src/oidc/controllers/InteractionsCtrl';{{/if}}
+
 
 @Configuration({
   ...config,
@@ -29,7 +31,8 @@ const methodOverride = require("koa-override");{{/if}}
     "{{route}}": [
       `${rootDir}/controllers/**/*.ts`
     ]{{#if swagger}},
-    "/": [IndexCtrl]{{/if}}
+    "/": [IndexCtrl]{{/if}}{{#if oidc}},
+    "/": [InteractionsCtrl]{{/if}}
   },
   {{#if swagger}}
   swagger: [
@@ -45,6 +48,14 @@ const methodOverride = require("koa-override");{{/if}}
   views: {
     root: `${rootDir}/../views`,
     viewEngine: "ejs"
+  },
+  {{/if}}
+  {{#if oidc}}
+  views: {
+    root: `${rootDir}/views`,
+    extensions: {
+      ejs: "ejs"
+    }
   },
   {{/if}}
   exclude: [

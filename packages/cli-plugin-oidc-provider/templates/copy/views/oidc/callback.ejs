@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title><%= title %></title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900|Material+Icons" rel="stylesheet" type="text/css">
+    <link href="https://cdn.jsdelivr.net/npm/quasar@2.0.3/dist/quasar.prod.css" rel="stylesheet" type="text/css">
+  </head>
+
+  <body>
+<div id="q-app">
+  {{ user }}
+    </div>
+
+    <script async src="https://ga.jspm.io/npm:es-module-shims@0.10.1/dist/es-module-shims.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "vue": "https://cdn.jsdelivr.net/npm/vue@3.1.5/dist/vue.esm-browser.prod.js",
+          "@vue/compiler-dom": "https://cdn.jsdelivr.net/npm/@vue/compiler-dom@3.1.5/dist/compiler-dom.esm-browser.js",
+          "quasar": "https://cdn.jsdelivr.net/npm/quasar@2.0.3/dist/quasar.esm.prod.js",
+          "quasar-ui-http-authentication": "https://cdn.jsdelivr.net/npm/quasar-ui-http-authentication@2.0.1-beta.10/dist/quasar-ui-http-authentication.es.js",
+          "jose/jwks/remote": "https://cdn.jsdelivr.net/npm/jose@3.14.3/dist/browser/jwks/remote.js",
+          "jose/jwt/verify": "https://cdn.jsdelivr.net/npm/jose@3.14.3/dist/browser/jwt/verify.js"
+        }
+      }
+    </script>
+    <script type="module">
+      import { createApp, ref, computed } from 'vue'
+      import { Quasar } from 'quasar'
+      import VuePlugin, { loadLang } from 'quasar-ui-http-authentication'
+      import { jwtVerify } from 'jose/jwt/verify'
+      import { createRemoteJWKSet } from 'jose/jwks/remote'
+
+      const app = createApp({
+        setup () {
+          const auth0 = new Auth0Client({
+            domain: 'https://localhost:8083',
+            client_id: 'foo',
+            redirect_uri: 'https://localhost:8083/cb'
+          });
+
+          const redirectResult = await auth0.handleRedirectCallback();
+          //logged in. you can get the user profile like this:
+          const user = computed(() => await auth0.getUser())
+          console.log(user);
+
+
+          // const params = ref({})
+          // const hash = window.location.hash
+          // hash.substr(1).split('&').map(hk => { 
+          //   let entry = hk.split('='); 
+          //   params.value[entry[0]] = entry[1] 
+          // })
+
+          // const idToken = params.value.id_token
+
+          // const JWKS = createRemoteJWKSet(new URL('https://localhost:8083/jwks'))
+
+          // const payload = ref()
+          // const protectedHeader = ref()
+          // jwtVerify(idToken, JWKS, {
+          //   issuer: 'https://localhost:8083',
+          //   audience: 'foo'
+          // }).then((res) => {
+          //   payload.value = res.payload
+          //   protectedHeader.value = res.protectedHeader
+          // })
+          // const idToken = computed(() => {
+          //   if (params.value.id_token) {
+          //     const parts = params.value.id_token.split('.')
+          //     return {
+          //       // header: atob(parts[0]),
+          //       // payload: atob(parts[1]),
+          //       // signature: atob(parts[2])
+          //     }
+          //   }
+          // })
+
+          return {
+            user
+          }
+        }
+      })
+
+      app.use(Quasar)
+      app.use(VuePlugin)
+      app.mount('#q-app')
+    </script>
+  </body>
+</html>

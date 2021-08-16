@@ -1,0 +1,51 @@
+import {Accounts} from "../../services/Accounts"; 
+import {OidcSettings} from "@tsed/oidc-provider";
+
+const settings: OidcSettings = {
+  issuer: "https://localhost:8083/",
+  jwksPath: "./jwks.json",
+  Accounts: Accounts,
+  cookies: {
+    // https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys
+    keys: [
+      'secret1'
+    ]
+  },
+  routes: {
+    authorization: '/authorize',
+    token: '/oauth/token'
+  },
+  clients: [
+    {
+      client_id: 'foo',
+      client_name: 'Test client',
+      logo_uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Typescript_logo_2020.svg/1024px-Typescript_logo_2020.svg.png',
+      grant_types: [
+        "authorization_code",
+        "implicit"
+      ],
+      // response_types: [
+      //     "code id_token"
+      // ],
+      client_secret: "secret",
+      redirect_uris: [
+          "https://localhost:8083/cb",
+          'https://localhost:8081/cb'
+      ],
+      token_endpoint_auth_method: 'none'
+    }
+  ],
+  claims: {
+    openid: ["sub"],
+    email: ["email", "email_verified"]
+  },
+  features: {
+    // disable the packaged interactions
+    devInteractions: {enabled: false},
+    encryption: {enabled: true},
+    introspection: {enabled: true},
+    revocation: {enabled: true}
+  }
+}
+
+export default settings

@@ -247,6 +247,15 @@ registerProvider({
             }
           },
           {
+            name: "OpenID Connect provider",
+            value: {
+              type: "oidc",
+              devDependencies: {
+                "@tsed/cli-plugin-oidc-provider": cliVersion
+              }
+            }
+          },
+          {
             name: "Testing",
             value: {
               type: "testing",
