@@ -1,62 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <title><%= title %></title>
-    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900|Material+Icons" rel="stylesheet" type="text/css">
-    <link href="https://cdn.jsdelivr.net/npm/quasar@2.0.3/dist/quasar.prod.css" rel="stylesheet" type="text/css">
-  </head>
+<%- include('partials/header.ejs') %>
+<body>
 
-  <body>
-<div id="q-app">
-  {{ client }}
-  {{ details }}
-    <consent-component
-      :client="client"
-      :scopes="scopes"
-      :allow-form="{
-        action: '/interaction/<%= uid %>/confirm',
-        method: 'post'
-      }"
-      :deny-form="{
-        action: '/interaction/<%= uid %>/abort',
-        method: 'post'
-      }"
-    ></consent-component>
-    </div>
+<div class="login-card">
+    <h1><%= title %></h1>
 
-    <script async src="https://ga.jspm.io/npm:es-module-shims@0.10.1/dist/es-module-shims.js"></script>
-    <script type="importmap">
-      {
-        "imports": {
-          "vue": "https://cdn.jsdelivr.net/npm/vue@3.1.5/dist/vue.esm-browser.prod.js",
-          "@vue/compiler-dom": "https://cdn.jsdelivr.net/npm/@vue/compiler-dom@3.1.5/dist/compiler-dom.esm-browser.js",
-          "quasar": "https://cdn.jsdelivr.net/npm/quasar@2.0.3/dist/quasar.esm.prod.js",
-          "quasar-ui-http-authentication": "https://cdn.jsdelivr.net/npm/quasar-ui-http-authentication@2.0.1-beta.13/dist/quasar-ui-http-authentication.es.js"        }
-      }
-    </script>
-    <script type="module">
-      import { createApp, ref } from 'vue'
-      import { Quasar } from 'quasar'
-      import VuePlugin, { loadLang } from 'quasar-ui-http-authentication'
+    <%- include('forms/consent-form.ejs') %>
 
+    <%- include('partials/login-help.ejs') %>
+</div>
 
-      const app = createApp({
-        setup () {
-          const client = <%- JSON.stringify(client) %>;
-          const details = <%- JSON.stringify(details) %>;
-          const scopes = <%- JSON.stringify(details.missingOIDCScope.filter(v => v !== 'openid').map(v => ({ name: v }))) %>;;
+<% include('partials/footer.ejs') %>
 
-          return {
-            client,
-            details,
-            scopes
-          }
-        }
-      })
-
-      app.use(Quasar)
-      app.use(VuePlugin)
-      app.mount('#q-app')
-    </script>
-  </body>
+</body>
 </html>

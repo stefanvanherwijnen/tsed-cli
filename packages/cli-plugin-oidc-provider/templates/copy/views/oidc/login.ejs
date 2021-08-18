@@ -1,76 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <title><%= title %></title>
-    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900|Material+Icons" rel="stylesheet" type="text/css">
-    <link href="https://cdn.jsdelivr.net/npm/quasar@2.0.3/dist/quasar.prod.css" rel="stylesheet" type="text/css">
-  </head>
+<%- include('partials/header.ejs') %>
+<body>
 
-  <body>
-<div id="q-app">
-    <login-component
-        identifier-field="email"
-        @submit="submit"
-        @to-register="register"
-        @to-password-forgot="passwordForgot"
-    ></login-component>
-    </div>
+<div class="login-card">
+    <h1><%= title %></h1>
 
-    <script async src="https://ga.jspm.io/npm:es-module-shims@0.10.1/dist/es-module-shims.js"></script>
-    <script type="importmap">
-      {
-        "imports": {
-          "vue": "https://cdn.jsdelivr.net/npm/vue@3.1.5/dist/vue.esm-browser.prod.js",
-          "@vue/compiler-dom": "https://cdn.jsdelivr.net/npm/@vue/compiler-dom@3.1.5/dist/compiler-dom.esm-browser.js",
-          "quasar": "https://cdn.jsdelivr.net/npm/quasar@2.0.3/dist/quasar.esm.prod.js",
-          "quasar-ui-http-authentication": "https://cdn.jsdelivr.net/npm/quasar-ui-http-authentication@2.0.1-beta.10/dist/quasar-ui-http-authentication.es.js"        }
-      }
-    </script>
-    <script type="module">
-      import { createApp, ref } from 'vue'
-      import { Quasar, Dialog } from 'quasar'
-      import VuePlugin, { loadLang, useLang, invalidCredentialsDialog, verificationRequiredDialog } from 'quasar-ui-http-authentication'
+    <%- include('forms/login-form.ejs') %>
 
-      const app = createApp({
-        setup () {
-          const lang = useLang()
+    <%- include('partials/login-help.ejs') %>
+</div>
 
-          const register = () => window.location.replace('<%= registerUrl %>')
-          const passwordForgot = () => window.location.replace('<%= passwordForgotUrl %>')
+<%- include('partials/footer.ejs') %>
 
-          const submit = (body) => fetch('<%= uid %>/login', {
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            },
-            method: 'post',
-            body: JSON.stringify(body.user)
-          })
-          .then((res) => {
-            if (res.ok) {
-              console.log(res)
-              window.location.href = res.url
-            } else if (res.status === 401) {
-              verificationRequiredDialog({}, lang)
-            } else if (res.status === 403) {
-              invalidCredentialsDialog({}, lang)
-            }
-          })
-          return {
-            register,
-            passwordForgot,
-            submit
-          }
-        }
-      })
-
-      app.use(Quasar, {
-        plugins: {
-          Dialog
-        }
-      })
-      app.use(VuePlugin)
-      app.mount('#q-app')
-    </script>
-  </body>
+</body>
 </html>

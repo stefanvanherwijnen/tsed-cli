@@ -2,18 +2,16 @@ import {Accounts} from "../../services/Accounts";
 import {OidcSettings} from "@tsed/oidc-provider";
 
 const settings: OidcSettings = {
+  path: "/oidc",
   issuer: "https://localhost:8083/",
   jwksPath: "./jwks.json",
   Accounts: Accounts,
+  proxy: true,
   cookies: {
     // https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys
     keys: [
       'secret1'
     ]
-  },
-  routes: {
-    authorization: '/authorize',
-    token: '/oauth/token'
   },
   clients: [
     {
@@ -24,13 +22,12 @@ const settings: OidcSettings = {
         "authorization_code",
         "implicit"
       ],
-      // response_types: [
-      //     "code id_token"
-      // ],
+      response_types: [
+        "code id_token"
+      ],
       client_secret: "secret",
       redirect_uris: [
-          "https://localhost:8083/cb",
-          'https://localhost:8081/cb'
+          'https://localhost:8080/cb'
       ],
       token_endpoint_auth_method: 'none'
     }

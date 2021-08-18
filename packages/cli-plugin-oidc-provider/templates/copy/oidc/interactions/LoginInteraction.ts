@@ -1,14 +1,15 @@
-import {$log, BodyParams, Inject, Post, View, Res} from "@tsed/common";
+import {BodyParams, Inject, Post, View} from "@tsed/common";
 import {Env} from "@tsed/core";
 import {Constant} from "@tsed/di";
 import {BadRequest, Unauthorized} from "@tsed/exceptions";
 import {Interaction, OidcCtx, OidcSession, Params, Prompt, Uid} from "@tsed/oidc-provider";
+import {Name} from "@tsed/schema";
 import {Accounts} from "../../services/Accounts";
-import {Account} from "../../models/Account";
 
 @Interaction({
   name: "login"
 })
+@Name("Oidc")
 export class LoginInteraction {
   @Constant("env")
   env: Env;
@@ -16,14 +17,15 @@ export class LoginInteraction {
   @Inject()
   accounts: Accounts;
 
+  $onCreate() {
+  }
+
   @View("oidc/login")
-  async $prompt(
-    @OidcCtx() oidcCtx: OidcCtx,
-    @Prompt() prompt: Prompt,
-    @OidcSession() session: OidcSession,
-    @Params() params: Params,
-    @Uid() uid: Uid
-  ): Promise<any> {
+  async $prompt(@OidcCtx() oidcCtx: OidcCtx,
+                @Prompt() prompt: Prompt,
+                @OidcSession() session: OidcSession,
+                @Params() params: Params,
+                @Uid() uid: Uid): Promise<any> {
     const client = await oidcCtx.findClient();
 
     if (!client) {
@@ -37,48 +39,45 @@ export class LoginInteraction {
       params,
       title: "Sign-in",
       flash: false,
-      ...oidcCtx.debug(),
-      registerUrl: "https://localhost:8083",
-      passwordForgotUrl: "https://localhost:8083"
+      ...oidcCtx.debug()
     };
   }
 
   @Post("/login")
-  async submit(
-    @Res() res: any,
-    @BodyParams() body: any,
-    @OidcSession() session: OidcSession,
-    @Prompt() prompt: Prompt,
-    @OidcCtx() oidcCtx: OidcCtx,
-    @Uid() uid: Uid
-  ) {
+  @View("oidc/login")
+  async submit(@BodyParams() payload: any,
+               @Params() params: Params,
+               @Uid() uid: Uid,
+               @OidcSession() session: OidcSession,
+               @Prompt() prompt: Prompt,
+               @OidcCtx() oidcCtx: OidcCtx) {
+
     if (prompt.name !== "login") {
       throw new BadRequest("Bad interaction name");
     }
 
-    let { username, email, password } = body
+    const client = await oidcCtx.findClient();
 
-    let user: Account | undefined
-    if ((email || username) && password) {
-      user = await this.accounts.authenticate({ email, username, password })
-    }
+    const account = await this.accounts.authenticate(payload.email, payload.password);
 
-    if (!user) {
-      res.status(403);
+    if (!account) {
       return {
-        message: 'Invalid credentials'
-      }
-    }
-    if (user && !user.emailVerified) {
-      res.status(401);
-      return {
-        message: 'User not verified'
-      }
+        client,
+        uid,
+        details: prompt.details,
+        params: {
+          ...params,
+          login_hint: payload.email
+        },
+        title: "Sign-in",
+        flash: "Invalid email or password.",
+        ...oidcCtx.debug()
+      };
     }
 
-    return await oidcCtx.interactionFinished({
+    return oidcCtx.interactionFinished({
       login: {
-        accountId: user._id
+        accountId: account.accountId
       }
     });
   }

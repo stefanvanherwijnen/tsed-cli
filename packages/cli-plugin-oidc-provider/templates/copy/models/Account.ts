@@ -8,16 +8,9 @@ export class Account {
   email: string;
 
   @Property()
-  username: string
-
-  @Property()
-  password: string
-
-  @Property()
   @Name("email_verified")
   emailVerified: boolean;
-  
-  // Added in v7
+
   [key: string]: unknown;
 
   get accountId() {
