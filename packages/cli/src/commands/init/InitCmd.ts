@@ -16,11 +16,11 @@ import {
   RootRendererService
 } from "@tsed/cli-core";
 import {camelCase, paramCase, pascalCase} from "change-case";
-import {basename, join} from "path";
+import {basename, join, resolve} from "path";
 import {DEFAULT_TSED_TAGS} from "../../constants";
 import {ProjectConvention} from "../../interfaces/ProjectConvention";
 import {OutputFilePathPipe} from "../../pipes/OutputFilePathPipe";
-import {Features, FeatureValue} from "../../services/Features";
+import {Features, FeatureValue, parseFeaturesFile} from "../../services/Features";
 
 export interface InitCmdContext extends CliDefaultOptions, InstallOptions {
   platform: "express" | "koa";
@@ -54,6 +54,10 @@ export interface InitCmdContext extends CliDefaultOptions, InstallOptions {
       type: String,
       defaultValue: DEFAULT_TSED_TAGS,
       description: "Use a specific version of Ts.ED (format: 5.x.x)"
+    },
+    "-f, --features-file <path>": {
+      type: String,
+      description: "Location of a file in which the features are defined."
     }
   }
 })
@@ -82,7 +86,19 @@ export class InitCmd implements CommandProvider {
   @Inject()
   protected fs: CliFs;
 
+  async $beforePrompt(initialOptions: Partial<InitCmdContext>) {
+    const callPath = process.cwd();
+    if (callPath && initialOptions.featuresFile) {
+      const featuresFilePath = resolve(callPath, initialOptions.featuresFile);
+      const featuresFromFile = await import(featuresFilePath);
+      const mappedFeatures = parseFeaturesFile(featuresFromFile, "3.8.0"); // Inject CLI version
+      initialOptions = {...initialOptions, ...mappedFeatures};
+    }
+    return initialOptions;
+  }
+
   $prompt(initialOptions: Partial<InitCmdContext>): QuestionOptions {
+    const featuresQuestions = initialOptions.features?.length ? [] : [...this.features];
     return [
       {
         type: "input",
@@ -94,7 +110,7 @@ export class InitCmd implements CommandProvider {
           return paramCase(input);
         }
       },
-      ...this.features
+      ...featuresQuestions
     ];
   }
 
@@ -104,7 +120,7 @@ export class InitCmd implements CommandProvider {
     const features: FeatureValue[] = [];
 
     Object.entries(ctx)
-      .filter(([key]) => key.startsWith("features"))
+      .filter(([key]) => key.startsWith("features") && key !== "featuresFile")
       .forEach(([key, value]: any[]) => {
         delete ctx[key];
         features.push(...[].concat(value));
