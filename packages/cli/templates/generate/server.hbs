@@ -19,7 +19,7 @@ import {config, rootDir} from "./config";{{#if swagger}}
 import {IndexCtrl} from "{{indexControllerPath}}";{{/if}}{{#if koa}}
 
 const methodOverride = require("koa-override");{{/if}}{{#if oidc}}
-import {InteractionsCtrl} from 'src/oidc/controllers/InteractionsCtrl';{{/if}}
+import {InteractionsCtrl} from "src/controllers/oidc/InteractionsCtrl";{{/if}}
 
 
 @Configuration({

@@ -3,33 +3,18 @@ import {OidcSettings} from "@tsed/oidc-provider";
 
 const settings: OidcSettings = {
   path: "/oidc",
-  issuer: "https://localhost:8083/",
-  jwksPath: "./jwks.json",
   Accounts: Accounts,
-  proxy: true,
-  cookies: {
-    // https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys
-    keys: [
-      'secret1'
-    ]
-  },
+  jwksPath: "./jwks.jon",
   clients: [
     {
-      client_id: 'foo',
-      client_name: 'Test client',
-      logo_uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Typescript_logo_2020.svg/1024px-Typescript_logo_2020.svg.png',
-      grant_types: [
-        "authorization_code",
-        "implicit"
-      ],
-      response_types: [
-        "code id_token"
-      ],
-      client_secret: "secret",
+      client_id: "client_id",
+      client_secret: "client_secret",
       redirect_uris: [
-          'https://localhost:8080/cb'
+        "http://localhost:3000"
       ],
-      token_endpoint_auth_method: 'none'
+      response_types: ["id_token"],
+      grant_types: ["implicit"],
+      token_endpoint_auth_method: "none"
     }
   ],
   claims: {

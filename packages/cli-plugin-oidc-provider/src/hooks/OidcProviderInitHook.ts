@@ -27,9 +27,9 @@ export class OidcProviderInitHook {
 
     return [
       {
-        title: "Copy template folder",
+        title: "Copy source folder",
         task: async () => {
-          return copy(join(TEMPLATE_DIR, 'copy'), this.srcRenderer.rootDir)
+          return copy(join(TEMPLATE_DIR, 'src'), this.srcRenderer.rootDir)
         }
       },
       {

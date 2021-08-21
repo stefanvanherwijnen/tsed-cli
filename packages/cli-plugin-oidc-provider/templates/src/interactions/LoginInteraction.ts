@@ -4,7 +4,7 @@ import {Constant} from "@tsed/di";
 import {BadRequest, Unauthorized} from "@tsed/exceptions";
 import {Interaction, OidcCtx, OidcSession, Params, Prompt, Uid} from "@tsed/oidc-provider";
 import {Name} from "@tsed/schema";
-import {Accounts} from "../../services/Accounts";
+import {Accounts} from "../services/Accounts";
 
 @Interaction({
   name: "login"
@@ -20,7 +20,7 @@ export class LoginInteraction {
   $onCreate() {
   }
 
-  @View("oidc/login")
+  @View("login")
   async $prompt(@OidcCtx() oidcCtx: OidcCtx,
                 @Prompt() prompt: Prompt,
                 @OidcSession() session: OidcSession,
@@ -44,7 +44,7 @@ export class LoginInteraction {
   }
 
   @Post("/login")
-  @View("oidc/login")
+  @View("login")
   async submit(@BodyParams() payload: any,
                @Params() params: Params,
                @Uid() uid: Uid,

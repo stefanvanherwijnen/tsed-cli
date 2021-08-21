@@ -11,7 +11,7 @@ export class ConsentInteraction {
   @Inject()
   oidc: OidcProvider;
 
-  @View("oidc/consent")
+  @View("interaction")
   async $prompt(@OidcCtx() oidcCtx: OidcCtx,
                 @Prompt() prompt: Prompt,
                 @OidcSession() session: OidcSession,
