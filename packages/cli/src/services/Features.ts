@@ -228,6 +228,15 @@ const featureChoices = (cliVersion: string) => [
     }
   },
   {
+    name: "OpenID Connect provider",
+    value: {
+      type: "oidc",
+      devDependencies: {
+        "@tsed/cli-plugin-oidc-provider": cliVersion
+      }
+    }
+  },
+  {
     name: "Testing",
     value: {
       type: "testing",
@@ -498,6 +507,13 @@ registerProvider({
         name: "featuresBundler",
         when: hasFeature("bundler"),
         choices: featuresBundlerChoices
+      },
+      {
+        message: "Choose the OIDC base path server",
+        name: "oidcBasePath",
+        default: "/oidc",
+        when: hasFeature("oidc"),
+        type: "input"
       },
       {
         message: "Choose the package manager:",

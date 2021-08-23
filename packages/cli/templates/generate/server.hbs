@@ -14,11 +14,14 @@ import cors from "@koa/cors";
 import "@tsed/ajv";{{#if swagger}}
 import "@tsed/swagger";{{/if}}{{#if mongoose}}
 import "@tsed/mongoose";{{/if}}{{#if typeorm}}
-import "@tsed/typeorm";{{/if}}
+import "@tsed/typeorm";{{/if}}{{#if oidc}}
+import "@tsed/oidc-provider";{{/if}}
 import {config, rootDir} from "./config";{{#if swagger}}
-import {IndexCtrl} from "{{indexControllerPath}}";{{/if}}{{#if koa}}
+import {IndexCtrl} from "{{indexControllerPath}}";{{/if}}{{#if oidc}}
+import {InteractionsCtrl} from "./controllers/oidc/InteractionsCtrl";{{/if}}{{#if koa}}
 
 const methodOverride = require("koa-override");{{/if}}
+
 
 @Configuration({
   ...config,
@@ -28,10 +31,12 @@ const methodOverride = require("koa-override");{{/if}}
   mount: {
     "{{route}}": [
       `${rootDir}/controllers/**/*.ts`
-    ]{{#if swagger}},
-    "/": [IndexCtrl]{{/if}}
-  },
-  {{#if swagger}}
+    ]{{#or swagger oidc}},
+    "/": [{{#if swagger}}
+      IndexCtrl{{/if}}{{#and swagger oidc}},{{/and}}{{#if oidc}}
+      InteractionsCtrl{{/if}}
+    ]{{/or}}
+  },{{#if swagger}}
   swagger: [
     {
       path: "/v2/docs",
@@ -41,12 +46,13 @@ const methodOverride = require("koa-override");{{/if}}
       path: "/v3/docs",
       specVersion: "3.0.1"
     }
-  ],
+  ],{{/if}}
   views: {
-    root: `${rootDir}/../views`,
-    viewEngine: "ejs"
+    root: `${rootDir}/views`,
+    extensions: {
+      ejs: "ejs"
+    }
   },
-  {{/if}}
   exclude: [
     "**/*.spec.ts"
   ]
