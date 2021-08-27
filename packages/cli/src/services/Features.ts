@@ -410,7 +410,7 @@ export const parseFeaturesFile = (features: Record<string, any>, cliVersion: str
     featuresTypeORM: FEATURES_TYPEORM_CONNECTION_TYPES.find((v) => v.value.type === features.featuresTypeORM)?.value,
     featuresTesting: featuresTestingChoices(cliVersion).find((v) => v.value.type === features.featuresTesting)?.value,
     featuresLinter: featuresLinterChoices(cliVersion).find((v) => v.value.type === features.featuresLinter)?.value,
-    featuresExtraLinter: featuresExtraLinterChoices.map((v) => v.value).filter((v) => features.featuresExtraLinter.includes(v.type)),
+    featuresExtraLinter: featuresExtraLinterChoices.map((v) => v.value).filter((v) => features.featuresExtraLinter?.includes(v.type)),
     featuresBundler: featuresBundlerChoices.find((v) => v.value.type === features.featuresBundlerChoices)?.value,
     packageManager: features.packageManager
   };
